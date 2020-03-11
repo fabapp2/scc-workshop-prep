@@ -1,0 +1,390 @@
+= Spring Cloud Contract
+<link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/font-awesome/3.1.0/css/font-awesome.min.css">
+:author: Fabian Krüger
+:email: fkrueger@pivotal.io
+:twitter: @hiiamfabian
+:source-highlighter: prettify
+:coderay-linenums-mode: inline
+:icons: font
+////:tip-caption:
+:tip-caption: icon:tags[]
+
+:producer-git-repo: git://producer-git-repo.git
+:consumer-git-repo: git://consumer-git-repo.git
+
+
+# About the Author
+{author} works as Senior Solution Architect for Pivotal, now VMware. +
+If you have question, or feedback, you can contact {firstname} by email {email} or find him on twitter {twitter}.
+
+NOTE: Asciidoctor supports font-based admonition icons, powered by Font Awesome!
+
+
+pass:[&#128161;]
+
+icon:heart[]
+
+icon:fa-dumbbell[]
+
+
+[quote, Abraham Lincoln, Address delivered at the dedication of the Cemetery at Gettysburg]
+____
+Four score and seven years ago our fathers brought forth
+on this continent a new nation...
+____
+
+---
+
+## Spring Cloud Contract - an overview
+
+Spring Cloud Contract uses a contract DSL to generate
+
+* a test that verifies the specified behaviour of an producer (API provider)
+* a stub which provides the defined behaviour for tests of the API consumer
+
+image::media/drawings/2.png[]
+
+When testing the client Spring Cloud Contract provides the stub to simulate the producer.
+The test has to provide information where the stub implementation provided by SCC can be found.
+
+For tests of the producer SCC generates a test which extends base class that has to be provided.
+The base has to setup the application for the generated test, e.g. start the application context define mock behaviour and so on.
+
+image::media/drawings/1.png[]
+
+
+## The example
+
+image::media/drawings/scc-architecture.svg[]
+
+## Workshop setup
+
+* Fork the workshop GIT repositories: +
+`git fork {producer-git-repo}` and +
+`git fork ${consumer-git-repo}`. +
+* Open the projects in your IDE
+* Open the workshop PDF found in the root of the project
+
+## Exercise - running the example
+* Have a look at the contract in the `consumer` project.
+* Run the producer and look at the generated test and the base class it extends
+* Verify that a jar with the stub was generated and exists in the `target` directory of the `producer`
+* The generated jar with the stubs will be required to run the `consumer` test. +
+ Install the generated stub in the local maven repository by doing a `mvn install`. +
+ The `consumer` expects the stubs in the local maven repository +
+ (per default under ``<user direcory>/.m2/repository`).
+
+NOTE: We could add a StockSymbol Service which provides available stock symbols and let the StockWatchService check if a given stock symbol is valid to generate errors
+
+## Exercise - delete stock price watch watch (REST)
+
+## Exercise - delete stock price watch watch (messaging)
+## Exercise - change id from long to UUID
+
+
+
+
+[TIP]
+It's possible to use Unicode glyphs as admonition icons.
+
+# Spring Cloud Streams
+
+
+
+
+## Topics / TODOs
+Fabian:
+* Workflows
+** * Difference between Provider Contract Testing and Consumer Driven Contracts#
+* Writing contracts using Groovy
+* Getting values using `stubrunner.runningstubs.*`` properties
+* Explain different test modes
+* Which advantages has it to use RestAssured with MockMvc ?
+* Using SCC DOcker to test non Java Clients (https://cloud.spring.io/spring-cloud-contract/reference/html/using.html#flows-provider-non-jvm)
+* Create documentation using SCC
+* Read about https://cloud.spring.io/spring-cloud-contract/reference/html/project-features.html#features-messaging-stub-triggering[Stub Triggering]
+
+Alex:
+
+* Look into Groovy
+* Look into StubRunnerConfig using a class
+* Try https://cloud.spring.io/spring-cloud-contract/reference/html/project-features.html#contract-java[writing contracts in Java]
+* Read all https://cloud.spring.io/spring-cloud-contract/reference/html/howto.html#howto[HOWTO Guides]
+* Look into MatchingStrategy class
+* What for do I need BodyMatchers ?
+
+Pedro:
+
+* Look into Swagger -> what are the differences compared to SCC ?
+** Differences and advantages of SCC compared to Schema validation
+* Look into Pact  -> what are the differences compared to SCC ?
+* Difference between http://wiremock.org/[Wiremock Documentation] and RestAssured
+** https://github.com/rest-assured/rest-assured/wiki/Usage[RestAssured Documentation]
+** is it possible to use RestAssured instead of WireMock ?
+* Test Messaging using Avro messages with Kafka (less important)
+
+
+
+Not sooo important:
+* ATDD Acceptance Test Driven Development
+* Can SCC be used to test Webservices (SOAP) ?
+* WebTestClient to test WebFlux APIs
+
+
+
+
+
+
+
+
+
+
+
+
+
+## RestAssured vs. Wiremock vs MockMvc ?
+
+By default, the Spring Cloud Contract Plugin uses Rest Assured’s MockMvc setup for the generated tests.
+Since non-Spring applications do not use MockMvc, you can change the testMode to EXPLICIT to send a real request to an application bound at a specific port.
+
+NOTE: https://cloud.spring.io/spring-cloud-contract/reference/html/using.html#flows-provider-non-spring-producer
+
+
+# Use "real" Servlet Container with EXPLICIT testMode:
+
+
+`pom.xml`
+
+[source, xml]
+----
+<plugin>
+<groupId>org.springframework.cloud</groupId>
+<artifactId>spring-cloud-contract-maven-plugin</artifactId>
+<version>2.2.1.RELEASE</version>
+<extensions>true</extensions>
+<configuration>
+  <testFramework>JUNIT5</testFramework>
+  <testMode>EXPLICIT</testMode>
+  <baseClassForTests>com.example.scc.producer.HelloServiceSccBase</baseClassForTests>
+</configuration>
+</plugin>
+----
+
+
+`Base class`
+
+[source, java]
+----
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@DirtiesContext
+public class HelloServiceSccBase {
+
+  @LocalServerPort
+  private long port;
+
+  @BeforeEach
+  public void setup() {
+      RestAssured.baseURI = "http://localhost:" + this.port;
+  }
+}
+----
+
+# Use Spring's MockMvc with EXPLICIT testMode:
+
+`pom.xml`
+
+[source, xml]
+--
+<plugin>
+<groupId>org.springframework.cloud</groupId>
+<artifactId>spring-cloud-contract-maven-plugin</artifactId>
+<version>2.2.1.RELEASE</version>
+<extensions>true</extensions>
+<configuration>
+  <testFramework>JUNIT5</testFramework>
+  <testMode>EXPLICIT</testMode>
+  <baseClassForTests>com.example.scc.producer.HelloServiceSccBase</baseClassForTests>
+</configuration>
+</plugin>
+--
+
+
+`Base class`
+
+[source, java, linenums]
+--
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@DirtiesContext
+@AutoConfigureMockMvc
+public class HelloServiceSccBase {
+
+  @Autowired
+  MockMvc mockMvc;
+
+  @LocalServerPort
+  private long port;
+
+  @BeforeEach
+  public void setup() {
+      RestAssured.baseURI = "http://localhost:" + this.port;
+  }
+}
+--
+
+## Example
+
+. Customer orders Coffee
+. Cashier receives Money
+. Cashier hands out QueueNumber to Customer
+. Barista receives Order
+. Barista prepares Order
+. Barista hands our Order
+
+
+## Setup
+
+* Checkout provided Git Repositories
+* Create projects in your IDE.
+
+TIP: Installing Groovy to your system allows you to use GroovyConsole to experiment e.g. with Regex.
+
+## Exercise - Create and use a REST contract on the producer side.
+
+In a first step we'll use the contract on the producer side.
+This is the simplest but already valuable step.
+
+. Start with a very simple Producer application
+. Add a contract and configure the build to generate tests
+. Provide base class
+. Generate the test
+. Fix the test
+
+NOTE: Look into generated classes (tests and stubs)
+
+## Exercise - Use the generated (wiremock) stubs on client side
+
+Second, we'll leverage the generated stubs and use it to test a consumer using the previously generated stubs.
+
+Configure the client build using `Spring Cloud Contract Stub Runner`
+
+[source, xml]
+--
+<dependency>
+  <groupId>org.springframework.cloud</groupId>
+  <artifactId>spring-cloud-starter-contract-stub-runner</artifactId>
+  <scope>test</scope>
+</dependency>
+--
+
+Write a Spring integration test using the generated stubs
+
+. Use `StubsMode.LOCAL` and SCC will try to resolve the stubs from local maven repository (`~/.m2repository`)
+. We need to pass the URL including the randomly chosen port of the created stub using `${stubrunner.runningstubs.producer.port}`. It can be passed to Spring using `properties`
+
+[source, java]
+--
+@SpringBootTest(properties = "producer.url=http://localhost:${stubrunner.runningstubs.producer.port}")
+@AutoConfigureStubRunner(
+		ids = "com.example.scc:producer:0.0.1-SNAPSHOT:stubs",
+		stubsMode = StubRunnerProperties.StubsMode.LOCAL)
+class ConsumerApplicationTests {
+
+	@Autowired
+	ConsumerOfHelloService consumerOfHelloService;
+
+	@Test
+	void contextLoads() {
+		consumerOfHelloService.useHelloService("Hello");
+	}
+
+}
+--
+
+
+## Exercise - Create and use a Messaging contract
+
+Implement messaging on the Producer side and verify that message is sent to `Sink` using integration test with test binder and contract.
+
+
+
+[source, java]
+----
+@AutoConfigureMessageVerifier // <1>
+public class HelloServiceSccBase {...}
+----
+
+<1> You need to add `@AutoConfigureMessageVerifier` to the base class to initialise messaging support for scc.
+<2> and provide a contract for messaging
+
+[source, java]
+----
+
+----
+
+QUESTION: clarify what role the label plays
+
+
+`NoSuchBeanDefinitionException: No qualifying bean of type 'org.springframework.cloud.contract.verifier.messaging.internal.ContractVerifierMessaging<?>' available: expected at least 1 bean which qualifies as autowire candidate. Dependency annotations: {@javax.inject.Inject()}``
+
+NOTE: solved by adding `@AutoConfigureMessageVerifier` to base class
+
+
+## Exercise - Add header field with timestamp and compare using a method in base class
+
+[source, java]
+----
+// output message of the contract
+    outputMessage {
+        // destination to which the output message will be sent
+        sentTo('output')
+        // the body of the output message
+        body("Hello")
+        // the headers of the output message
+        headers {
+            header('some', $(producer(execute('assertDoubleEqualsWithTolerance($it, 80)')))) <1>
+        }
+    }
+----
+
+<1> using `execute(...)` lets you execute a method in base class, `$it` provides the current value into it.
+
+[source, java]
+----
+public void assertDoubleEqualsWithTolerance(String it, int tolerance) {
+    assertThat(System.currentTimeMillis() - Double.valueOf(it) < tolerance); <1>
+}
+----
+
+<1> we can then provide a method in the base class doing assertions on the given value and additional parameters if required.
+
+## Exercise - provide a base class for each contract
+
+For now we use one base class for our REST contract and for the messaging contract.
+We might want to separate things and provide a base class for each contract.
+Let's go...
+
+. Provide a package `baseclasses` in `src/test/java` for all your base classes.
+. Split up the `HelloServiceSccBase` class in two classes, one for your Rest contract and one for your Messaging contract. +
+Name the messaging base class `MessagingBase` and the rest base class `RestBase`. Both base classes must reside in the `baseclasses` package.
+. Change your `spring-cloud-contract-maven-plugin` configuration. +
+Remove or comment out the `<baseClassForTests>` property and provide a `<packageWithBaseClasses>` property which has the package with your base classes as value.
+. Run the build so the contract tests get recreated. Use `-DskipTests` if the tests are failing (which should not be the case).
+. Verify that there's a `MessagingTest` and a `RestTest` class now and that the extend the dedicated base classes.
+
+NOTE: You can find more information about how to define base classes with scc here: https://learning.oreilly.com/videos/hands-on-guide-to/9780135598436/9780135598436-HGSC_01_04_06[Define base classes with SC-Contract in Maven] and here:
+
+
+## Exercise - Share the contracts through a centralised repository so it can be shared by multiple clients
+
+*
+
+
+# Topics
+* describe Workflows
+**
+
+
+## Resources
+
+https://cloud-samples.spring.io/spring-cloud-contract-samples/
+https://cloud-samples.spring.io/spring-cloud-contract-samples/workshops.html

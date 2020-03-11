@@ -1,0 +1,48 @@
+@startuml
+allow_mixing
+
+component StockOrder  {
+   class StockPriceWatchListService
+   class StockPriceAlarmInboundAdapter
+}
+
+component StockPriceWatch  {
+  circle StockPriceWatchController
+  class StockPriceWatchService
+  class StockPriceAlarmRepository
+  class StockPriceAlarmOutboundAdapter
+  class StockPriceUpdateInboundAdapter
+}
+
+StockPriceAlarmInboundAdapter .> StockPriceWatchListService
+StockPriceWatchListService --( StockPriceWatchController : <<uses>>
+
+StockPriceWatchController ..> StockPriceWatchService
+StockPriceUpdateInboundAdapter ..> StockPriceWatchService
+StockPriceWatchService .> StockPriceAlarmOutboundAdapter
+StockPriceWatchService ..> StockPriceAlarmRepository
+
+queue StockPriceAlarm
+
+StockPriceAlarmOutboundAdapter --> StockPriceAlarm  : <<produces>>
+StockPriceAlarm --> StockPriceAlarmInboundAdapter : <<consumes>>
+
+
+
+
+component StockPriceProvider <<producer>> {
+  class StockPriceProviderService
+  class StockPriceUpdateOutboundAdapter
+}
+
+queue StockPriceUpdateTopic
+
+StockPriceUpdateOutboundAdapter --> StockPriceUpdateTopic : <<produces>>
+StockPriceUpdateTopic --> StockPriceUpdateInboundAdapter : <<consumes>>
+
+
+
+StockPriceProviderService ..> StockPriceUpdateOutboundAdapter
+
+
+@enduml
